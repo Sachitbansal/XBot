@@ -50,7 +50,7 @@ def run() -> int:
         else:
             log.warning("Telegram not configured; skipping generation")
         t = send.send_pending(conn)
-        log.info("telegram: %s", t)
+        log.info("delivery: %s", t)
 
         conn.execute("SELECT pg_advisory_unlock(%s)", (LOCK_KEY,))
     log.info("cycle done in %.1fs", time.monotonic() - started)
