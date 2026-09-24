@@ -5,6 +5,7 @@ bot process. Undelivered drafts are retried next cycle (within the age window).
 """
 import html
 import logging
+import time
 
 import httpx
 
@@ -64,27 +65,49 @@ def telegram_configured() -> bool:
     return bool(config.TELEGRAM_BOT_TOKEN and config.TELEGRAM_CHAT_ID)
 
 
+def active_outputs() -> list[str]:
+    """Configured outputs that can actually run (telegram needs token + chat id)."""
+    outputs = [o for o in config.OUTPUT_MODES if o in ("markdown", "telegram")]
+    if "telegram" in outputs and not telegram_configured():
+        log.warning("Telegram output enabled but TELEGRAM_BOT_TOKEN/CHAT_ID missing; skipping it")
+        outputs.remove("telegram")
+    return outputs
+
+
 def output_configured() -> bool:
-    return config.OUTPUT_MODE == "markdown" or telegram_configured()
+    return bool(active_outputs())
 
 
 def send_pending(conn) -> dict:
+    """Deliver unsent drafts to every active output, then mark them delivered.
+
+    With markdown on, a draft counts as delivered once it's in the file (a Telegram
+    failure just means no buttons for it; review.py still works). Telegram-only
+    drafts that fail stay unsent and are retried next cycle.
+    """
     stats = {"sent": 0, "failed": 0}
-    if not output_configured():
-        log.warning("Telegram not configured; skipping send")
+    outputs = active_outputs()
+    if not outputs:
         return stats
     drafts = db.unsent_drafts(conn, config.SEND_MAX_DRAFT_AGE_HOURS, config.MAX_DRAFTS_SENT_PER_CYCLE)
-    if config.OUTPUT_MODE == "markdown":
-        return export_md.export(conn, drafts)
+    if not drafts:
+        return stats
+
+    if "markdown" in outputs:
+        export_md.write(drafts)
 
     for d in drafts:
-        try:
-            msg_id = send_message(format_draft(d), keyboard(str(d["id"])))
-            db.mark_draft_sent(conn, d["id"], msg_id)
-            conn.commit()
-            stats["sent"] += 1
-        except Exception as e:
-            conn.rollback()
-            stats["failed"] += 1
-            log.warning("send failed for draft %s: %s", d["id"], e)
+        msg_id = None
+        if "telegram" in outputs:
+            try:
+                msg_id = send_message(format_draft(d), keyboard(str(d["id"])))
+                time.sleep(config.TELEGRAM_SEND_INTERVAL_SECONDS)
+            except Exception as e:
+                stats["failed"] += 1
+                log.warning("telegram send failed for draft %s: %s", d["id"], e)
+                if "markdown" not in outputs:
+                    continue
+        db.mark_draft_sent(conn, d["id"], msg_id)
+        conn.commit()
+        stats["sent"] += 1
     return stats

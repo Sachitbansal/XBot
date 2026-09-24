@@ -1,14 +1,13 @@
 """Build-phase output: append drafts to a per-day markdown file (output/drafts/YYYY-MM-DD.md).
 
 Each item gets a section with its score breakdown; each draft shows its short id so
-decisions can be logged with `python review.py`.
+decisions can be logged with `python review.py` (or the Telegram buttons).
 """
 import logging
 from datetime import datetime
 from pathlib import Path
 
 import config
-import db
 
 log = logging.getLogger(__name__)
 
@@ -36,10 +35,10 @@ def render_item(drafts: list[dict]) -> str:
     return "\n".join(lines) + "\n---\n\n"
 
 
-def export(conn, drafts: list[dict]) -> dict:
-    stats = {"sent": 0, "failed": 0}
+def write(drafts: list[dict]) -> Path | None:
+    """Append drafts (grouped by item) to today's file. Pure file I/O; caller marks delivery."""
     if not drafts:
-        return stats
+        return None
     out_dir = Path(config.DRAFTS_DIR)
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"{datetime.now():%Y-%m-%d}.md"
@@ -52,12 +51,7 @@ def export(conn, drafts: list[dict]) -> dict:
     new_file = not path.exists()
     with path.open("a", encoding="utf-8") as f:
         if new_file:
-            f.write(f"# Drafts {datetime.now():%Y-%m-%d}\n\nReview: `python review.py`\n\n")
+            f.write(f"# Drafts {datetime.now():%Y-%m-%d}\n\nReview: `python review.py` or Telegram\n\n")
         f.write("".join(chunks))
-
-    for d in drafts:
-        db.mark_draft_sent(conn, d["id"], None)
-    conn.commit()
-    stats["sent"] = len(drafts)
     log.info("wrote %d drafts to %s", len(drafts), path)
-    return stats
+    return path

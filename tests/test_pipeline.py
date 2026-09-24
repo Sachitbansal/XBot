@@ -126,7 +126,7 @@ def test_unsent_drafts_respects_age_and_cap(conn):
 def test_markdown_export_marks_delivered(conn, tmp_path, monkeypatch):
     import config
     from pipeline import send
-    monkeypatch.setattr(config, "OUTPUT_MODE", "markdown")
+    monkeypatch.setattr(config, "OUTPUT_MODES", ["markdown"])
     monkeypatch.setattr(config, "DRAFTS_DIR", str(tmp_path))
     [raw_id] = dedupe.store_new(conn, [_item()])
     db.insert_score(conn, raw_id, {"virality": 8, "novelty": 8, "technical": 8,
@@ -144,3 +144,28 @@ def test_markdown_export_marks_delivered(conn, tmp_path, monkeypatch):
 def test_banned_phrase_filter():
     assert generate.banned_phrase("Everyone\u2019s talking about GPT-6") == "everyone's talking about"
     assert generate.banned_phrase("Qwen runs 130k context on 16GB") is None
+
+
+def test_telegram_failure_handling(conn, tmp_path, monkeypatch):
+    import config
+    from pipeline import send
+    monkeypatch.setattr(config, "TELEGRAM_BOT_TOKEN", "t")
+    monkeypatch.setattr(config, "TELEGRAM_CHAT_ID", "1")
+    monkeypatch.setattr(config, "DRAFTS_DIR", str(tmp_path))
+    monkeypatch.setattr(config, "TELEGRAM_SEND_INTERVAL_SECONDS", 0)
+
+    def boom(*a, **k):
+        raise RuntimeError("telegram down")
+    monkeypatch.setattr(send, "send_message", boom)
+
+    [raw_id] = dedupe.store_new(conn, [_item()])
+    db.insert_draft(conn, raw_id, "short_punchy", "x", "m")
+    conn.commit()
+
+    # telegram-only: failure leaves the draft unsent for retry
+    monkeypatch.setattr(config, "OUTPUT_MODES", ["telegram"])
+    assert send.send_pending(conn) == {"sent": 0, "failed": 1}
+    # markdown + telegram: file write counts as delivery even if telegram fails
+    monkeypatch.setattr(config, "OUTPUT_MODES", ["markdown", "telegram"])
+    assert send.send_pending(conn) == {"sent": 1, "failed": 1}
+    assert db.unsent_drafts(conn, 12, 10) == []

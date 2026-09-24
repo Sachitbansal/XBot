@@ -22,8 +22,9 @@ venv/bin/python run_cycle.py     # one cycle (cron runs this hourly)
 venv/bin/python review.py        # approve/edit/reject drafts in the terminal (logs decisions)
 ```
 
-Build phase: `config.OUTPUT_MODE = "markdown"` — drafts land in `output/drafts/YYYY-MM-DD.md`
-with score breakdowns. Later, set it to `"telegram"` and run the bot instead:
+`config.OUTPUT_MODES` picks where drafts go — any of `"markdown"` (files in `output/drafts/`
+with score breakdowns) and `"telegram"` (messages with Approve/Edit/Reject). Both are on by
+default. Decisions can come from either `review.py` or the bot; a draft is decided once.
 
 ```bash
 venv/bin/python telegram_bot.py  # long-running bot; send /start to get your chat id
