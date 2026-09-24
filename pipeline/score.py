@@ -18,14 +18,17 @@ AXES = {
 }
 
 SYSTEM = f"""You rate news items for a tech creator on X deciding what's worth posting about.
+Their niche: {config.NICHE}.
 Audience: {config.AUDIENCE}.
 
 Score each axis as an integer 0-10. Be harsh: most items are 3-6. Reserve 8+ for things
 people in this audience will genuinely be talking about today.
-- virality: likelihood this spreads widely on X right now
+- virality: likelihood this spreads widely on dev/tech X right now
 - novelty: genuinely new (new release, result, idea) vs rehash / incremental
 - technical_value: substance a builder can learn from or act on
-- relevance: fit for the audience above
+- relevance: fit for the niche above. Off-niche (consumer gadgets, entertainment, general
+  politics/business, hardware reviews, science outside computing) = 0-3 even if big news.
+  Trending repos, new AI models/tools, agent frameworks, security incidents, SaaS launches = high.
 - discussion_potential: invites takes, debate, replies
 
 Respond with JSON only: {{"virality": n, "novelty": n, "technical_value": n, "relevance": n, "discussion_potential": n}}"""

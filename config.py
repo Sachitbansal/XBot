@@ -49,11 +49,15 @@ SCORE_WEIGHTS = {
     "relevance": 0.15,
     "discussion": 0.20,
 }
-# What "relevance" is judged against.
-AUDIENCE = (
-    "developers, AI/ML engineers and indie builders on X who care about AI, LLMs, agents, "
-    "open source, dev tools, infra and startups"
+# Sachit's niche. Scoring relevance and draft framing are both anchored to this.
+NICHE = (
+    "AI and GenAI, AI agents, automation, cybersecurity, web dev, general software dev, "
+    "open source (incl. GSoC and contributor culture), SaaS startup ideas and new SaaS/dev-tool "
+    "startups, trending GitHub repos"
 )
+AUDIENCE = f"developers, indie hackers and builders on X who follow: {NICHE}"
+# Niche gate: items below this relevance score never get drafts, however viral.
+MIN_RELEVANCE_TO_DRAFT = 6
 # Cap LLM scoring calls per cycle so a first run / big backlog can't blow the budget.
 MAX_ITEMS_TO_SCORE_PER_CYCLE = 60
 # Trim raw_content before sending to the scorer.
@@ -92,6 +96,23 @@ POST_GOAL = (
     "grab attention in the first line, get views, replies and follows. Lead with why it "
     "matters or what's surprising, not with how it works"
 )
+# Drafts containing any of these are dropped (case-insensitive). Free models copy
+# stock openers verbatim, which makes every post read like a template.
+BANNED_PHRASES = [
+    "everyone's talking about",
+    "the more important story",
+    "the interesting part about",
+    "if i were building",
+    "here's why",
+    "game changer",
+    "game-changer",
+    "let's dive in",
+    "buckle up",
+    "in today's world",
+    "the real story",
+    "isn't just",
+    "it's not just",
+]
 # Sources where the author has NOT consumed the full thing (only title + abstract/summary).
 SUMMARY_ONLY_SOURCES = ("arxiv", "hf_papers")
 
@@ -105,7 +126,7 @@ HN_MIN_POINTS = 50  # skip low-signal stories
 # HN is mostly tech already; the scorer's relevance axis does the real filtering.
 # Flip on if volume/LLM cost gets too high.
 HN_KEYWORD_FILTER = False
-HN_TECH_KEYWORDS = [
+HN_TECH_KEYWORDS = [  # only used if HN_KEYWORD_FILTER
     "ai", "llm", "gpt", "model", "agent", "open source", "rust", "python", "gpu",
     "nvidia", "openai", "anthropic", "claude", "gemini", "llama", "inference",
     "database", "postgres", "linux", "kernel", "compiler", "startup", "api",
@@ -116,19 +137,45 @@ ARXIV_CATEGORIES = ["cs.AI", "cs.LG", "cs.CL"]
 ARXIV_MAX_RESULTS = 40
 ARXIV_LOOKBACK_HOURS = 48  # arXiv listing lags submission; dedupe handles overlap
 
-GITHUB_TRENDING_URL = "https://github.com/trending?since=daily"
-GITHUB_TRENDING_MAX = 25
+# Overall + niche languages; the same repo across pages is deduped.
+GITHUB_TRENDING_URLS = [
+    "https://github.com/trending?since=daily",
+    "https://github.com/trending/python?since=daily",
+    "https://github.com/trending/typescript?since=daily",
+]
+GITHUB_TRENDING_MAX = 25  # per page
+GITHUB_README_CHARS = 2500  # README excerpt fed to generation for repo items
 
 RSS_FEEDS = {
-    "techcrunch": "https://techcrunch.com/feed/",
-    "arstechnica": "https://feeds.arstechnica.com/arstechnica/technology-lab",
-    "theverge": "https://www.theverge.com/rss/index.xml",
+    # AI / GenAI
     "simonwillison": "https://simonwillison.net/atom/everything/",
     "hf_blog": "https://huggingface.co/blog/feed.xml",
-    "techmeme": "https://www.techmeme.com/feed.xml",
+    "latent_space": "https://www.latent.space/feed",
     "tldr_ai": "https://tldr.tech/api/rss/ai",
+    # general tech / startups / launches
+    "techcrunch": "https://techcrunch.com/feed/",
+    "techmeme": "https://www.techmeme.com/feed.xml",
+    "arstechnica": "https://feeds.arstechnica.com/arstechnica/technology-lab",
+    "tldr_founders": "https://tldr.tech/api/rss/founders",
+    "producthunt": "https://www.producthunt.com/feed",
+    "show_hn": "https://hnrss.org/show?points=50",
+    # open source
+    "github_blog": "https://github.blog/feed/",
+    # web dev
+    "tldr_webdev": "https://tldr.tech/api/rss/webdev",
+    "javascript_weekly": "https://javascriptweekly.com/rss",
+    # cybersecurity
+    "thehackernews": "https://feeds.feedburner.com/TheHackersNews",
+    "bleepingcomputer": "https://www.bleepingcomputer.com/feed/",
+    "krebs": "https://krebsonsecurity.com/feed/",
+    "tldr_infosec": "https://tldr.tech/api/rss/infosec",
+    # communities (Reddit: ~20s rate-limit wait per feed, see below)
     "reddit_localllama": "https://www.reddit.com/r/LocalLLaMA/top/.rss?t=day",
     "reddit_machinelearning": "https://www.reddit.com/r/MachineLearning/top/.rss?t=day",
+    "reddit_ai_agents": "https://www.reddit.com/r/AI_Agents/top/.rss?t=day",
+    "reddit_saas": "https://www.reddit.com/r/SaaS/top/.rss?t=day",
+    "reddit_webdev": "https://www.reddit.com/r/webdev/top/.rss?t=day",
+    "reddit_netsec": "https://www.reddit.com/r/netsec/top/.rss?t=day",
 }
 RSS_MAX_PER_FEED = 15
 RSS_LOOKBACK_HOURS = 24

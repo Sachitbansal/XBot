@@ -105,10 +105,11 @@ def test_awaiting_drafts_only_cleared_and_undrafted(conn):
     scores = {"virality": 9, "novelty": 9, "technical": 9, "relevance": 9, "discussion": 9}
     db.insert_score(conn, a, scores, 9.0, True, "m")
     db.insert_score(conn, b, scores, 3.0, False, "m")
-    assert [str(r["id"]) for r in db.items_awaiting_drafts(conn, 7.5, 10)] == [a]
-    assert len(db.items_awaiting_drafts(conn, 3.0, 10)) == 2  # retuned threshold applies to backlog
+    assert [str(r["id"]) for r in db.items_awaiting_drafts(conn, 7.5, 6, 10)] == [a]
+    assert len(db.items_awaiting_drafts(conn, 3.0, 6, 10)) == 2  # retuned threshold applies to backlog
     db.insert_draft(conn, a, "contrarian", "x", "m")
-    assert db.items_awaiting_drafts(conn, 7.5, 10) == []
+    assert db.items_awaiting_drafts(conn, 7.5, 6, 10) == []
+    assert db.items_awaiting_drafts(conn, 3.0, 10, 10) == []  # niche gate
     assert db.unscored_items(conn, 10) == []
 
 
@@ -138,3 +139,8 @@ def test_markdown_export_marks_delivered(conn, tmp_path, monkeypatch):
     assert "hot take" in text and d[:8] in text and "**8.00**" in text
     assert [str(r["id"]) for r in db.undecided_drafts(conn)] == [d]
     assert send.send_pending(conn)["sent"] == 0  # not re-exported
+
+
+def test_banned_phrase_filter():
+    assert generate.banned_phrase("Everyone\u2019s talking about GPT-6") == "everyone's talking about"
+    assert generate.banned_phrase("Qwen runs 130k context on 16GB") is None
