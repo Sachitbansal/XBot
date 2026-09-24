@@ -19,6 +19,13 @@ Existing DB? Apply schema manually (idempotent): `psql "$DATABASE_URL" -f schema
 
 ```bash
 venv/bin/python run_cycle.py     # one cycle (cron runs this hourly)
+venv/bin/python review.py        # approve/edit/reject drafts in the terminal (logs decisions)
+```
+
+Build phase: `config.OUTPUT_MODE = "markdown"` — drafts land in `output/drafts/YYYY-MM-DD.md`
+with score breakdowns. Later, set it to `"telegram"` and run the bot instead:
+
+```bash
 venv/bin/python telegram_bot.py  # long-running bot; send /start to get your chat id
 ```
 
@@ -43,9 +50,10 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 venv/bin/python -m pytest
 | `llm.py` | only place that calls OpenRouter (scoring + generation modes, fallback models, retries) |
 | `db.py` | raw-SQL helpers per table |
 | `fetchers/` | one module per source, each `fetch() -> list[RawItem dict]` |
-| `pipeline/` | `dedupe` → `score` → `generate` → `send`, plus `decide` (approve/edit/reject logging) |
+| `pipeline/` | `dedupe` → `score` → `generate` → `send` (markdown via `export_md`, or Telegram), plus `decide` (approve/edit/reject logging) |
 | `run_cycle.py` | one cycle; advisory-locked so overlapping cron runs exit early |
-| `telegram_bot.py` | button + edit-reply handling → `decisions` / `edit_pairs` |
+| `review.py` | build-phase terminal review → `decisions` / `edit_pairs` |
+| `telegram_bot.py` | button + edit-reply handling → `decisions` / `edit_pairs` (later) |
 
 ## Models
 

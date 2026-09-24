@@ -1,7 +1,7 @@
-"""Send unsent drafts to Telegram with Approve / Edit / Reject buttons.
+"""Deliver unsent drafts for review: markdown files (build phase) or Telegram.
 
-Uses the plain Bot API over HTTP so run_cycle stays sync and doesn't need the bot process.
-Unsent drafts (e.g. Telegram down, token missing) are retried on the next cycle.
+Telegram uses the plain Bot API over HTTP so run_cycle stays sync and doesn't need the
+bot process. Undelivered drafts are retried next cycle (within the age window).
 """
 import html
 import logging
@@ -10,6 +10,7 @@ import httpx
 
 import config
 import db
+from pipeline import export_md
 
 log = logging.getLogger(__name__)
 
@@ -63,12 +64,18 @@ def telegram_configured() -> bool:
     return bool(config.TELEGRAM_BOT_TOKEN and config.TELEGRAM_CHAT_ID)
 
 
+def output_configured() -> bool:
+    return config.OUTPUT_MODE == "markdown" or telegram_configured()
+
+
 def send_pending(conn) -> dict:
     stats = {"sent": 0, "failed": 0}
-    if not telegram_configured():
+    if not output_configured():
         log.warning("Telegram not configured; skipping send")
         return stats
     drafts = db.unsent_drafts(conn, config.SEND_MAX_DRAFT_AGE_HOURS, config.MAX_DRAFTS_SENT_PER_CYCLE)
+    if config.OUTPUT_MODE == "markdown":
+        return export_md.export(conn, drafts)
 
     for d in drafts:
         try:

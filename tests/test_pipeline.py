@@ -114,3 +114,21 @@ def test_unsent_drafts_respects_age_and_cap(conn):
     conn.execute("UPDATE drafts SET generated_at = now() - interval '2 days' WHERE id = %s", (old,))
     assert len(db.unsent_drafts(conn, 12, 10)) == 3
     assert len(db.unsent_drafts(conn, 12, 2)) == 2
+
+
+def test_markdown_export_marks_delivered(conn, tmp_path, monkeypatch):
+    import config
+    from pipeline import send
+    monkeypatch.setattr(config, "OUTPUT_MODE", "markdown")
+    monkeypatch.setattr(config, "DRAFTS_DIR", str(tmp_path))
+    [raw_id] = dedupe.store_new(conn, [_item()])
+    db.insert_score(conn, raw_id, {"virality": 8, "novelty": 8, "technical": 8,
+                                   "relevance": 8, "discussion": 8}, 8.0, True, "m")
+    d = db.insert_draft(conn, raw_id, "short_punchy", "hot take", "m")
+    conn.commit()
+    assert send.send_pending(conn)["sent"] == 1
+    [md] = tmp_path.glob("*.md")
+    text = md.read_text()
+    assert "hot take" in text and d[:8] in text and "**8.00**" in text
+    assert [str(r["id"]) for r in db.undecided_drafts(conn)] == [d]
+    assert send.send_pending(conn)["sent"] == 0  # not re-exported

@@ -71,6 +71,11 @@ X_MAX_CHARS = 280
 # Safety valve against spam: max items drafted in a single cycle (highest composite first).
 MAX_ITEMS_TO_DRAFT_PER_CYCLE = 3
 
+# Where drafts go for review. "markdown" (build phase) writes to DRAFTS_DIR and you
+# review with `python review.py`; "telegram" sends to the bot.
+OUTPUT_MODE = "markdown"  # "markdown" | "telegram"
+DRAFTS_DIR = "output/drafts"
+
 # Anti-spam for sending: never send drafts older than this, and cap sends per cycle.
 SEND_MAX_DRAFT_AGE_HOURS = 12
 MAX_DRAFTS_SENT_PER_CYCLE = 15

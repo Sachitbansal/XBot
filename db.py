@@ -110,10 +110,11 @@ def unsent_drafts(conn, max_age_hours: int, limit: int) -> list[dict]:
     """Unsent drafts newer than max_age_hours, oldest first (stale ones are never sent)."""
     return conn.execute(
         """
-        SELECT d.*, r.title, r.source, r.source_url, s.composite_score
+        SELECT d.*, r.title, r.source, r.source_url, r.author, s.*
         FROM drafts d
         LEFT JOIN raw_items r ON r.id = d.raw_item_id
-        LEFT JOIN LATERAL (SELECT composite_score FROM item_scores
+        LEFT JOIN LATERAL (SELECT composite_score, virality_score, novelty_score, technical_score,
+                                  relevance_score, discussion_score FROM item_scores
                            WHERE raw_item_id = d.raw_item_id
                            ORDER BY scored_at DESC LIMIT 1) s ON true
         WHERE d.sent_to_telegram_at IS NULL
@@ -125,7 +126,8 @@ def unsent_drafts(conn, max_age_hours: int, limit: int) -> list[dict]:
     ).fetchall()
 
 
-def mark_draft_sent(conn, draft_id, telegram_message_id: int) -> None:
+def mark_draft_sent(conn, draft_id, telegram_message_id: int | None) -> None:
+    """Mark delivered for review. telegram_message_id is None for markdown output."""
     conn.execute(
         "UPDATE drafts SET sent_to_telegram_at = now(), telegram_message_id = %s WHERE id = %s",
         (telegram_message_id, draft_id),
@@ -176,3 +178,16 @@ def get_draft_by_message_id(conn, telegram_message_id: int) -> dict | None:
     return conn.execute(
         "SELECT * FROM drafts WHERE telegram_message_id = %s", (telegram_message_id,)
     ).fetchone()
+
+
+def undecided_drafts(conn) -> list[dict]:
+    """Delivered drafts with no decision yet, grouped by item (for review.py)."""
+    return conn.execute(
+        """
+        SELECT d.*, r.title, r.source_url FROM drafts d
+        LEFT JOIN raw_items r ON r.id = d.raw_item_id
+        WHERE d.sent_to_telegram_at IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM decisions x WHERE x.draft_id = d.id)
+        ORDER BY d.generated_at, d.raw_item_id, d.angle_type
+        """
+    ).fetchall()
