@@ -1,0 +1,2 @@
+# crontab -e   (hourly, 9am–11pm + midnight–2am server local time = 17 runs/day)
+0 0-2,9-23 * * * cd /home/sachit/XBot && venv/bin/python run_cycle.py >> logs/cycle.log 2>&1

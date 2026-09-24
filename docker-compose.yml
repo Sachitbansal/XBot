@@ -1,0 +1,18 @@
+# Dev Postgres. On the server, point DATABASE_URL at the real instance instead.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: xbot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: xbot
+      POSTGRES_PASSWORD: xbot
+      POSTGRES_DB: xbot
+    ports:
+      - "127.0.0.1:5440:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+volumes:
+  pgdata:

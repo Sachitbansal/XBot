@@ -1,0 +1,16 @@
+# sudo cp deploy/xbot-telegram.service /etc/systemd/system/
+# sudo systemctl daemon-reload && sudo systemctl enable --now xbot-telegram
+[Unit]
+Description=X Content Agent Telegram Bot
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=sachit
+WorkingDirectory=/home/sachit/XBot
+ExecStart=/home/sachit/XBot/venv/bin/python telegram_bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
