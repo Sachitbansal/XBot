@@ -40,12 +40,14 @@ LLM_RETRY_BASE_DELAY = 5  # seconds, exponential backoff
 
 # --- Scoring ---------------------------------------------------------------
 THRESHOLD = 6.0  # spec default 7.5; lowered during build phase to see more drafts
+# Spec default was 0.30/0.25/0.20/0.15/0.10. Shifted toward reach: posts are for
+# attention/follows, so technical depth barely counts. Must sum to 1.0.
 SCORE_WEIGHTS = {
-    "virality": 0.30,
+    "virality": 0.35,
     "novelty": 0.25,
-    "technical": 0.20,
+    "technical": 0.05,
     "relevance": 0.15,
-    "discussion": 0.10,
+    "discussion": 0.20,
 }
 # What "relevance" is judged against.
 AUDIENCE = (

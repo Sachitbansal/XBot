@@ -13,6 +13,11 @@ def test_normalize_and_hash():
         dedupe.content_hash("hello, world!", "https://ex.com/a?utm_medium=rss")
 
 
+def test_score_weights_sum_to_one():
+    import config
+    assert abs(sum(config.SCORE_WEIGHTS.values()) - 1.0) < 1e-9
+
+
 def test_parse_scores_and_composite():
     s = score.parse_scores({"virality": 12, "novelty": "7", "technical_value": 6.6,
                             "relevance": -1, "discussion_potential": 5})
