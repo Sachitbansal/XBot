@@ -51,7 +51,10 @@ def chat(messages: list[dict], models: list[str], *, json_mode: bool = False,
         try:
             resp = httpx.post(config.OPENROUTER_URL, json=payload, headers=headers,
                               timeout=config.LLM_TIMEOUT_SECONDS)
-            data = resp.json() if resp.content else {}
+            try:
+                data = resp.json() if resp.content else {}
+            except ValueError:  # HTML error page from a gateway
+                data = {"error": {"code": resp.status_code, "message": resp.text[:200]}}
             err = data.get("error")
             if resp.status_code in RETRYABLE_STATUS or (err and err.get("code") in RETRYABLE_STATUS):
                 last_err = f"{resp.status_code}: {err or resp.text[:200]}"

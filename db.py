@@ -106,7 +106,8 @@ def insert_draft(conn, raw_item_id, angle_type: str, text: str,
     return str(row["id"])
 
 
-def unsent_drafts(conn) -> list[dict]:
+def unsent_drafts(conn, max_age_hours: int, limit: int) -> list[dict]:
+    """Unsent drafts newer than max_age_hours, oldest first (stale ones are never sent)."""
     return conn.execute(
         """
         SELECT d.*, r.title, r.source, r.source_url, s.composite_score
@@ -116,8 +117,11 @@ def unsent_drafts(conn) -> list[dict]:
                            WHERE raw_item_id = d.raw_item_id
                            ORDER BY scored_at DESC LIMIT 1) s ON true
         WHERE d.sent_to_telegram_at IS NULL
+          AND d.generated_at > now() - make_interval(hours => %s)
         ORDER BY d.generated_at
-        """
+        LIMIT %s
+        """,
+        (max_age_hours, limit),
     ).fetchall()
 
 

@@ -104,3 +104,13 @@ def test_awaiting_drafts_only_cleared_and_undrafted(conn):
     db.insert_draft(conn, a, "contrarian", "x", "m")
     assert db.items_awaiting_drafts(conn, 10) == []
     assert db.unscored_items(conn, 10) == []
+
+
+def test_unsent_drafts_respects_age_and_cap(conn):
+    [raw_id] = dedupe.store_new(conn, [_item()])
+    for i in range(3):
+        db.insert_draft(conn, raw_id, "contrarian", f"d{i}", "m")
+    old = db.insert_draft(conn, raw_id, "contrarian", "old", "m")
+    conn.execute("UPDATE drafts SET generated_at = now() - interval '2 days' WHERE id = %s", (old,))
+    assert len(db.unsent_drafts(conn, 12, 10)) == 3
+    assert len(db.unsent_drafts(conn, 12, 2)) == 2

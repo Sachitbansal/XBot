@@ -12,7 +12,7 @@ import html
 import logging
 import sys
 
-from telegram import ForceReply, Update
+from telegram import ForceReply, LinkPreviewOptions, Update
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, ContextTypes,
                           MessageHandler, filters)
 
@@ -54,7 +54,7 @@ async def mark_message(context, message_id: int, draft: dict, result: dict) -> N
     try:
         await context.bot.edit_message_text(chat_id=config.TELEGRAM_CHAT_ID, message_id=message_id,
                                             text=text, parse_mode="HTML",
-                                            disable_web_page_preview=True)
+                                            link_preview_options=LinkPreviewOptions(is_disabled=True))
     except Exception as e:  # message too old / unchanged — decision is already stored
         log.warning("could not edit message %s: %s", message_id, e)
 

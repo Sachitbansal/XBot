@@ -50,7 +50,7 @@ def send_message(text: str, reply_markup: dict | None = None) -> int:
     resp = httpx.post(
         f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage",
         json={"chat_id": config.TELEGRAM_CHAT_ID, "text": text, "parse_mode": "HTML",
-              "disable_web_page_preview": True, "reply_markup": reply_markup},
+              "link_preview_options": {"is_disabled": True}, "reply_markup": reply_markup},
         timeout=config.HTTP_TIMEOUT_SECONDS,
     )
     data = resp.json()
@@ -59,15 +59,16 @@ def send_message(text: str, reply_markup: dict | None = None) -> int:
     return data["result"]["message_id"]
 
 
+def telegram_configured() -> bool:
+    return bool(config.TELEGRAM_BOT_TOKEN and config.TELEGRAM_CHAT_ID)
+
+
 def send_pending(conn) -> dict:
-    stats = {"sent": 0, "failed": 0, "skipped": 0}
-    drafts = db.unsent_drafts(conn)
-    if not drafts:
+    stats = {"sent": 0, "failed": 0}
+    if not telegram_configured():
+        log.warning("Telegram not configured; skipping send")
         return stats
-    if not (config.TELEGRAM_BOT_TOKEN and config.TELEGRAM_CHAT_ID):
-        stats["skipped"] = len(drafts)
-        log.warning("Telegram not configured; %d drafts left unsent", len(drafts))
-        return stats
+    drafts = db.unsent_drafts(conn, config.SEND_MAX_DRAFT_AGE_HOURS, config.MAX_DRAFTS_SENT_PER_CYCLE)
 
     for d in drafts:
         try:

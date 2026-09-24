@@ -71,6 +71,10 @@ X_MAX_CHARS = 280
 # Safety valve against spam: max items drafted in a single cycle (highest composite first).
 MAX_ITEMS_TO_DRAFT_PER_CYCLE = 3
 
+# Anti-spam for sending: never send drafts older than this, and cap sends per cycle.
+SEND_MAX_DRAFT_AGE_HOURS = 12
+MAX_DRAFTS_SENT_PER_CYCLE = 15
+
 STYLE_INSTRUCTION = (
     "concise, technical but understandable, builder perspective, slightly provocative, "
     "no corporate language, occasional dry humor, don't overuse emojis, don't sound like an AI"

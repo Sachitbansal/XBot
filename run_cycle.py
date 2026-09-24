@@ -43,8 +43,12 @@ def run() -> int:
 
         s = score.score_pending(conn)
         log.info("scoring: %s", s)
-        g = generate.generate_pending(conn)
-        log.info("generation: %s", g)
+        # No point drafting what can't be reviewed; cleared items stay queued (48h) until Telegram is set up.
+        if send.telegram_configured():
+            g = generate.generate_pending(conn)
+            log.info("generation: %s", g)
+        else:
+            log.warning("Telegram not configured; skipping generation")
         t = send.send_pending(conn)
         log.info("telegram: %s", t)
 
