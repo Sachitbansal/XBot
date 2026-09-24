@@ -100,9 +100,10 @@ def test_awaiting_drafts_only_cleared_and_undrafted(conn):
     scores = {"virality": 9, "novelty": 9, "technical": 9, "relevance": 9, "discussion": 9}
     db.insert_score(conn, a, scores, 9.0, True, "m")
     db.insert_score(conn, b, scores, 3.0, False, "m")
-    assert [str(r["id"]) for r in db.items_awaiting_drafts(conn, 10)] == [a]
+    assert [str(r["id"]) for r in db.items_awaiting_drafts(conn, 7.5, 10)] == [a]
+    assert len(db.items_awaiting_drafts(conn, 3.0, 10)) == 2  # retuned threshold applies to backlog
     db.insert_draft(conn, a, "contrarian", "x", "m")
-    assert db.items_awaiting_drafts(conn, 10) == []
+    assert db.items_awaiting_drafts(conn, 7.5, 10) == []
     assert db.unscored_items(conn, 10) == []
 
 

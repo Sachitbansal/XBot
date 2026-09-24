@@ -76,18 +76,22 @@ def insert_score(conn, raw_item_id, scores: dict, composite: float,
     return str(row["id"])
 
 
-def items_awaiting_drafts(conn, limit: int, max_age_hours: int = 48) -> list[dict]:
-    """Recent items that cleared threshold but have no drafts yet, best first."""
+def items_awaiting_drafts(conn, threshold: float, limit: int, max_age_hours: int = 48) -> list[dict]:
+    """Recent items scoring >= threshold with no drafts yet, best first.
+
+    Compares against the *current* threshold (not item_scores.cleared_threshold, which
+    records the threshold at scoring time) so manual retuning applies to the backlog.
+    """
     return conn.execute(
         """
         SELECT r.*, s.composite_score FROM raw_items r
-        JOIN item_scores s ON s.raw_item_id = r.id AND s.cleared_threshold
+        JOIN item_scores s ON s.raw_item_id = r.id AND s.composite_score >= %s
         WHERE NOT EXISTS (SELECT 1 FROM drafts d WHERE d.raw_item_id = r.id)
           AND r.fetched_at > now() - make_interval(hours => %s)
         ORDER BY s.composite_score DESC
         LIMIT %s
         """,
-        (max_age_hours, limit),
+        (threshold, max_age_hours, limit),
     ).fetchall()
 
 

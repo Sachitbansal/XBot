@@ -39,7 +39,7 @@ LLM_MAX_RETRIES = 4
 LLM_RETRY_BASE_DELAY = 5  # seconds, exponential backoff
 
 # --- Scoring ---------------------------------------------------------------
-THRESHOLD = 7.5
+THRESHOLD = 6.0  # spec default 7.5; lowered during build phase to see more drafts
 SCORE_WEIGHTS = {
     "virality": 0.30,
     "novelty": 0.25,
@@ -81,9 +81,17 @@ SEND_MAX_DRAFT_AGE_HOURS = 12
 MAX_DRAFTS_SENT_PER_CYCLE = 15
 
 STYLE_INSTRUCTION = (
-    "concise, technical but understandable, builder perspective, slightly provocative, "
-    "no corporate language, occasional dry humor, don't overuse emojis, don't sound like an AI"
+    "concise, plain language anyone in tech can follow, builder perspective, slightly provocative, "
+    "no jargon dumps, no corporate language, occasional dry humor, don't overuse emojis, "
+    "don't sound like an AI"
 )
+# The point of every post: reach. Nerdy/academic summaries don't get followers.
+POST_GOAL = (
+    "grab attention in the first line, get views, replies and follows. Lead with why it "
+    "matters or what's surprising, not with how it works"
+)
+# Sources where the author has NOT consumed the full thing (only title + abstract/summary).
+SUMMARY_ONLY_SOURCES = ("arxiv", "hf_papers")
 
 # --- Sources ---------------------------------------------------------------
 HTTP_TIMEOUT_SECONDS = 20
