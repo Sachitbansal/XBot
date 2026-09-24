@@ -27,11 +27,16 @@ def make_item(source: str, source_url: str, title: str, *, raw_content: str | No
 
 
 def get_fetchers() -> dict:
-    from fetchers import arxiv, github_trending, hackernews, rss, x_trending_search
+    from fetchers import (arxiv, devto, github_trending, hackernews, huggingface, lobsters, rss,
+                          x_trending_search)
     return {
         "hackernews": hackernews.fetch,
         "arxiv": arxiv.fetch,
+        "hf_papers": huggingface.fetch_papers,
+        "hf_models": huggingface.fetch_models,
         "github_trending": github_trending.fetch,
+        "lobsters": lobsters.fetch,
+        "devto": devto.fetch,
         "rss": rss.fetch,
         "x_search": x_trending_search.fetch,
     }

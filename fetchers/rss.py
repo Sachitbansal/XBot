@@ -1,5 +1,6 @@
 """RSS/Atom feeds listed in config.RSS_FEEDS."""
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 
 import feedparser
@@ -23,6 +24,10 @@ def fetch() -> list[dict]:
         for name, url in config.RSS_FEEDS.items():
             try:
                 resp = client.get(url)
+                if resp.status_code == 429:
+                    reset = float(resp.headers.get("x-ratelimit-reset") or config.RSS_RETRY_DELAY_SECONDS)
+                    time.sleep(min(reset + 1, config.RSS_MAX_RETRY_WAIT_SECONDS))
+                    resp = client.get(url)
                 resp.raise_for_status()
             except Exception as e:
                 log.warning("RSS feed %s failed: %s", name, e)

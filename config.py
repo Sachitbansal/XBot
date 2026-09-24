@@ -115,9 +115,25 @@ RSS_FEEDS = {
     "theverge": "https://www.theverge.com/rss/index.xml",
     "simonwillison": "https://simonwillison.net/atom/everything/",
     "hf_blog": "https://huggingface.co/blog/feed.xml",
+    "techmeme": "https://www.techmeme.com/feed.xml",
+    "tldr_ai": "https://tldr.tech/api/rss/ai",
+    "reddit_localllama": "https://www.reddit.com/r/LocalLLaMA/top/.rss?t=day",
+    "reddit_machinelearning": "https://www.reddit.com/r/MachineLearning/top/.rss?t=day",
 }
 RSS_MAX_PER_FEED = 15
 RSS_LOOKBACK_HOURS = 24
+# Reddit allows ~1 unauthenticated request per window; on 429 wait for its
+# x-ratelimit-reset (fallback RSS_RETRY_DELAY_SECONDS, capped) and retry once.
+RSS_RETRY_DELAY_SECONDS = 5
+RSS_MAX_RETRY_WAIT_SECONDS = 60
+
+HF_PAPERS_MAX = 20            # top daily papers by upvotes
+HF_MODELS_MAX = 20            # top trending models
+HF_MODELS_MAX_AGE_DAYS = 14   # skip long-trending old models
+
+LOBSTERS_MIN_SCORE = 15
+DEVTO_MAX = 20
+DEVTO_MIN_REACTIONS = 30
 
 # X-trending-via-search. "none" disables the source.
 SEARCH_PROVIDER = "none"  # "brave" | "serpapi" | "google_cse" | "none"
@@ -130,4 +146,5 @@ X_SEARCH_QUERIES = [
 X_SEARCH_RESULTS_PER_QUERY = 10
 
 # Which sources run each cycle.
-ENABLED_SOURCES = ["hackernews", "arxiv", "github_trending", "rss", "x_search"]
+ENABLED_SOURCES = ["hackernews", "arxiv", "hf_papers", "hf_models", "github_trending",
+                   "lobsters", "devto", "rss", "x_search"]
