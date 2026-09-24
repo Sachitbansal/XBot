@@ -112,6 +112,11 @@ BANNED_PHRASES = [
     "the real story",
     "isn't just",
     "it's not just",
+    # generic engagement bait; questions must be specific to the item
+    "thoughts?",
+    "what do you think?",
+    "agree?",
+    "let me know in the comments",
 ]
 # Sources where the author has NOT consumed the full thing (only title + abstract/summary).
 SUMMARY_ONLY_SOURCES = ("arxiv", "hf_papers")

@@ -36,6 +36,11 @@ Rules:
   lists, one-liners.
 - Never use these stock phrases (or close variants):
 {BANNED}
+- Discussion hook: usually ONE post in the set (pick whichever angle it fits best, at most
+  two) should end with a genuine question to the audience — one devs would actually want to
+  answer from their own experience: which tool they'd pick, whether they've hit this problem,
+  where they draw the line, what they'd build with it. It must be specific to this item. The
+  other posts make their point and stop. Skip the question only if nothing genuine fits.
 - No hashtags. At most one emoji, usually zero.
 - Be specific (name the thing, the number), but never invent facts not in the source.
 - Don't include links; they get attached separately.
