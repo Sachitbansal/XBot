@@ -6,6 +6,7 @@ import config
 import db
 import llm
 from fetchers import github_trending
+from pipeline import suggestions
 
 log = logging.getLogger(__name__)
 
@@ -97,10 +98,21 @@ def angles_for(item: dict) -> list[str]:
     return angles
 
 
-def build_prompt(item: dict, angles: list[str]) -> str:
+FOCUS_NOTE = (
+    "The creator explicitly asked for a post about: \"{focus}\". Angle every post toward that "
+    "topic, using this item as the news hook.\n\n"
+)
+
+
+def system_prompt(conn) -> str:
+    return SYSTEM + suggestions.prompt_block(conn)
+
+
+def build_prompt(item: dict, angles: list[str], focus: str | None = None) -> str:
     guides = "\n".join(f"- {a}: {ANGLE_GUIDES[a]}" for a in angles)
     keys = ", ".join(f'"{a}": "..." or null' for a in angles)
     return (
+        (FOCUS_NOTE.format(focus=focus) if focus else "") +
         source_note(item) +
         f"Source: {item['source']}\n"
         f"Title: {item['title']}\n"
@@ -113,12 +125,14 @@ def build_prompt(item: dict, angles: list[str]) -> str:
     )
 
 
-def generate_for_item(conn, item: dict) -> list[str]:
+def generate_for_item(conn, item: dict, *, focus: str | None = None,
+                      system: str | None = None) -> list[str]:
     """Generate + persist drafts for one item. Returns new draft ids."""
     angles = angles_for(item)
     if not angles:
         return []
-    content, model = llm.generate(SYSTEM, build_prompt(enrich(item), angles), json_mode=True)
+    content, model = llm.generate(system or system_prompt(conn),
+                                  build_prompt(enrich(item), angles, focus), json_mode=True)
     drafts = llm.parse_json(content)
 
     ids = []
@@ -140,9 +154,10 @@ def generate_pending(conn) -> dict:
     items = db.items_awaiting_drafts(conn, config.THRESHOLD, config.MIN_RELEVANCE_TO_DRAFT,
                                      config.MAX_ITEMS_TO_DRAFT_PER_CYCLE)
     stats = {"items": 0, "drafts": 0, "failed": 0}
+    system = system_prompt(conn)
     for item in items:
         try:
-            ids = generate_for_item(conn, item)
+            ids = generate_for_item(conn, item, system=system)
             conn.commit()
         except Exception as e:
             conn.rollback()

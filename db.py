@@ -112,8 +112,11 @@ def insert_draft(conn, raw_item_id, angle_type: str, text: str,
     return str(row["id"])
 
 
-def unsent_drafts(conn, max_age_hours: int, limit: int) -> list[dict]:
-    """Unsent drafts newer than max_age_hours, oldest first (stale ones are never sent)."""
+def unsent_drafts(conn, max_age_hours: int, limit: int, draft_ids: list | None = None) -> list[dict]:
+    """Unsent drafts newer than max_age_hours, oldest first (stale ones are never sent).
+
+    `draft_ids` restricts to specific drafts (on-demand /post delivers only its own).
+    """
     return conn.execute(
         """
         SELECT d.*, r.title, r.source, r.source_url, r.author, s.*
@@ -125,10 +128,11 @@ def unsent_drafts(conn, max_age_hours: int, limit: int) -> list[dict]:
                            ORDER BY scored_at DESC LIMIT 1) s ON true
         WHERE d.sent_to_telegram_at IS NULL
           AND d.generated_at > now() - make_interval(hours => %s)
+          AND (%s::uuid[] IS NULL OR d.id = ANY(%s::uuid[]))
         ORDER BY d.generated_at
         LIMIT %s
         """,
-        (max_age_hours, limit),
+        (max_age_hours, draft_ids, draft_ids, limit),
     ).fetchall()
 
 
@@ -197,3 +201,90 @@ def undecided_drafts(conn) -> list[dict]:
         ORDER BY d.generated_at, d.raw_item_id, d.angle_type
         """
     ).fetchall()
+
+
+# --- suggestions -----------------------------------------------------------
+
+def insert_suggestion(conn, text: str) -> str:
+    row = conn.execute("INSERT INTO suggestions (text) VALUES (%s) RETURNING id", (text,)).fetchone()
+    return str(row["id"])
+
+
+def latest_suggestion_summary(conn) -> dict | None:
+    return conn.execute(
+        "SELECT * FROM suggestion_summaries ORDER BY created_at DESC LIMIT 1"
+    ).fetchone()
+
+
+def unsummarized_suggestions(conn) -> list[dict]:
+    return conn.execute(
+        "SELECT * FROM suggestions WHERE summarized_into IS NULL ORDER BY created_at"
+    ).fetchall()
+
+
+def insert_suggestion_summary(conn, summary: str, model: str, folded_ids: list) -> str:
+    row = conn.execute(
+        "INSERT INTO suggestion_summaries (summary, model) VALUES (%s, %s) RETURNING id",
+        (summary, model),
+    ).fetchone()
+    conn.execute("UPDATE suggestions SET summarized_into = %s WHERE id = ANY(%s)",
+                 (row["id"], folded_ids))
+    return str(row["id"])
+
+
+# --- on-demand posts -------------------------------------------------------
+
+def best_undrafted_items(conn, min_relevance: int, limit: int, max_age_hours: int = 48,
+                         topic: str | None = None) -> list[dict]:
+    """Best-scoring recent in-niche items with no drafts, ignoring THRESHOLD.
+
+    With `topic`, only items whose title/content full-text-match it.
+    """
+    topic_sql = ("AND to_tsvector('english', r.title || ' ' || coalesce(r.raw_content, '')) "
+                 "@@ plainto_tsquery('english', %(topic)s)") if topic else ""
+    return conn.execute(
+        f"""
+        SELECT r.*, s.composite_score FROM raw_items r
+        JOIN item_scores s ON s.raw_item_id = r.id AND s.relevance_score >= %(rel)s
+        WHERE NOT EXISTS (SELECT 1 FROM drafts d WHERE d.raw_item_id = r.id)
+          AND r.fetched_at > now() - make_interval(hours => %(age)s)
+          {topic_sql}
+        ORDER BY s.composite_score DESC
+        LIMIT %(limit)s
+        """,
+        {"rel": min_relevance, "age": max_age_hours, "limit": limit, "topic": topic},
+    ).fetchall()
+
+
+def unscored_topic_items(conn, topic: str, limit: int, max_age_hours: int = 48) -> list[dict]:
+    return conn.execute(
+        """
+        SELECT r.* FROM raw_items r
+        WHERE NOT EXISTS (SELECT 1 FROM item_scores s WHERE s.raw_item_id = r.id)
+          AND r.fetched_at > now() - make_interval(hours => %s)
+          AND to_tsvector('english', r.title || ' ' || coalesce(r.raw_content, ''))
+              @@ plainto_tsquery('english', %s)
+        ORDER BY r.fetched_at DESC
+        LIMIT %s
+        """,
+        (max_age_hours, topic, limit),
+    ).fetchall()
+
+
+def get_raw_items_by_ids(conn, ids: list) -> list[dict]:
+    return conn.execute("SELECT * FROM raw_items WHERE id = ANY(%s::uuid[])", (ids,)).fetchall()
+
+
+def best_scored_among(conn, ids: list) -> dict | None:
+    if not ids:
+        return None
+    return conn.execute(
+        """
+        SELECT r.*, s.composite_score FROM raw_items r
+        JOIN item_scores s ON s.raw_item_id = r.id
+        WHERE r.id = ANY(%s::uuid[])
+          AND NOT EXISTS (SELECT 1 FROM drafts d WHERE d.raw_item_id = r.id)
+        ORDER BY s.composite_score DESC LIMIT 1
+        """,
+        (ids,),
+    ).fetchone()

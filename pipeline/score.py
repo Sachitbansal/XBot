@@ -5,6 +5,7 @@ import logging
 import config
 import db
 import llm
+from pipeline import suggestions
 
 log = logging.getLogger(__name__)
 
@@ -56,9 +57,13 @@ def composite(scores: dict) -> float:
     return round(sum(config.SCORE_WEIGHTS[a] * scores[a] for a in config.SCORE_WEIGHTS), 2)
 
 
-def score_item(conn, item: dict) -> dict:
+def system_prompt(conn) -> str:
+    return SYSTEM + suggestions.prompt_block(conn)
+
+
+def score_item(conn, item: dict, system: str | None = None) -> dict:
     """Score one item and persist. Returns {composite, cleared, scores}."""
-    raw, model = llm.score(SYSTEM, build_prompt(item))
+    raw, model = llm.score(system or system_prompt(conn), build_prompt(item))
     scores = parse_scores(raw)
     comp = composite(scores)
     cleared = comp >= config.THRESHOLD
@@ -70,9 +75,10 @@ def score_pending(conn) -> dict:
     """Score every unscored recent item (capped). Commits per item so failures don't lose work."""
     items = db.unscored_items(conn, config.MAX_ITEMS_TO_SCORE_PER_CYCLE)
     stats = {"scored": 0, "cleared": 0, "failed": 0}
+    system = system_prompt(conn)
     for item in items:
         try:
-            result = score_item(conn, item)
+            result = score_item(conn, item, system)
             conn.commit()
         except Exception as e:
             conn.rollback()

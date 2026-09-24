@@ -21,7 +21,8 @@ def conn(monkeypatch):
         c = db.connect()
     except Exception as e:
         pytest.skip(f"test DB unavailable: {e}")
-    c.execute("TRUNCATE raw_items, item_scores, drafts, decisions, edit_pairs, post_performance CASCADE")
+    c.execute("TRUNCATE raw_items, item_scores, drafts, decisions, edit_pairs, post_performance, "
+              "suggestions, suggestion_summaries CASCADE")
     c.commit()
     yield c
     c.close()

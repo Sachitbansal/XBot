@@ -30,6 +30,14 @@ default. Decisions can come from either `review.py` or the bot; a draft is decid
 venv/bin/python telegram_bot.py  # long-running bot; send /start to get your chat id
 ```
 
+## Telegram commands
+
+- `/post [topic]` — drafts right now. No topic: best in-niche undrafted item (threshold ignored).
+  With a topic: best matching item in the DB, else live HN + GitHub search for it.
+- `/suggest <text>` — feedback injected into every scoring/generation prompt. Past
+  `SUGGESTIONS_MAX_CHARS` it's LLM-condensed into a summary (raw suggestions are kept).
+- `/suggestions` — show the feedback in effect. `/cancel` — abort a pending edit.
+
 ## Tests
 
 ```bash

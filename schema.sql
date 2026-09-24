@@ -109,3 +109,25 @@ CREATE TABLE IF NOT EXISTS post_performance (
     profile_visits    INT,
     checked_at        TIMESTAMPTZ DEFAULT now()
 );
+
+-- ============================================
+-- SUGGESTIONS: free-text feedback sent via Telegram /suggest.
+-- Injected into scoring + generation prompts. When they grow past
+-- config.SUGGESTIONS_MAX_CHARS they're consolidated by an LLM into a
+-- suggestion_summaries row; raw rows are kept forever for analysis.
+-- ============================================
+CREATE TABLE IF NOT EXISTS suggestion_summaries (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    summary         TEXT NOT NULL,
+    model           TEXT NOT NULL,
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS suggestions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    text            TEXT NOT NULL,
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    summarized_into UUID REFERENCES suggestion_summaries(id)   -- NULL = not yet folded into a summary
+);
+
+CREATE INDEX IF NOT EXISTS idx_suggestions_unsummarized ON suggestions(created_at) WHERE summarized_into IS NULL;

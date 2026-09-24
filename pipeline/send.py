@@ -78,7 +78,7 @@ def output_configured() -> bool:
     return bool(active_outputs())
 
 
-def send_pending(conn) -> dict:
+def send_pending(conn, draft_ids: list | None = None) -> dict:
     """Deliver unsent drafts to every active output, then mark them delivered.
 
     With markdown on, a draft counts as delivered once it's in the file (a Telegram
@@ -89,7 +89,8 @@ def send_pending(conn) -> dict:
     outputs = active_outputs()
     if not outputs:
         return stats
-    drafts = db.unsent_drafts(conn, config.SEND_MAX_DRAFT_AGE_HOURS, config.MAX_DRAFTS_SENT_PER_CYCLE)
+    drafts = db.unsent_drafts(conn, config.SEND_MAX_DRAFT_AGE_HOURS, config.MAX_DRAFTS_SENT_PER_CYCLE,
+                              draft_ids)
     if not drafts:
         return stats
 

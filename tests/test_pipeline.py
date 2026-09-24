@@ -169,3 +169,32 @@ def test_telegram_failure_handling(conn, tmp_path, monkeypatch):
     monkeypatch.setattr(config, "OUTPUT_MODES", ["markdown", "telegram"])
     assert send.send_pending(conn) == {"sent": 1, "failed": 1}
     assert db.unsent_drafts(conn, 12, 10) == []
+
+
+def test_suggestions_guidance_and_consolidation(conn, monkeypatch):
+    import config
+    import llm
+    from pipeline import suggestions
+    assert suggestions.prompt_block(conn) == ""
+    suggestions.add(conn, "fewer questions")
+    assert "fewer questions" in suggestions.prompt_block(conn)
+
+    calls = []
+    monkeypatch.setattr(llm, "generate", lambda sys, user, **k: (calls.append(user), ("- condensed", "m"))[1])
+    monkeypatch.setattr(config, "SUGGESTIONS_MAX_CHARS", 40)
+    result = suggestions.add(conn, "more numbers, more cybersecurity, less hype please")
+    assert result["consolidated"] and "fewer questions" in calls[0]
+    assert suggestions.active_guidance(conn) == "- condensed"
+    suggestions.add(conn, "shorter")  # new ones stack on top of the summary
+    assert suggestions.active_guidance(conn) == "- condensed\n- shorter"
+
+
+def test_on_demand_pick_item(conn):
+    from pipeline import on_demand
+    scores = {"virality": 5, "novelty": 5, "technical": 5, "relevance": 8, "discussion": 5}
+    a, b = dedupe.store_new(conn, [_item("Rust web framework launch", "https://ex.com/r"),
+                                   _item("New ransomware strain hits hospitals", "https://ex.com/s")])
+    db.insert_score(conn, a, scores, 5.0, False, "m")  # below THRESHOLD: still eligible on demand
+    db.insert_score(conn, b, {**scores, "relevance": 2}, 5.5, False, "m")
+    assert str(on_demand.pick_item(conn, None)["id"]) == a       # b fails the niche gate
+    assert str(on_demand.pick_item(conn, "ransomware")["id"]) == b  # explicit topic skips the gate

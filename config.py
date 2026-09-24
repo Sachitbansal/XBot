@@ -123,6 +123,19 @@ BANNED_PHRASES = [
 # Sources where the author has NOT consumed the full thing (only title + abstract/summary).
 SUMMARY_ONLY_SOURCES = ("arxiv", "hf_papers")
 
+# --- Suggestions (/suggest in Telegram) -----------------------------------
+# Active guidance = latest summary + newer raw suggestions. Past this many chars,
+# an LLM call consolidates everything into one concise summary.
+SUGGESTIONS_MAX_CHARS = 1200
+SUGGESTIONS_SUMMARY_TARGET_CHARS = 700
+
+# --- On-demand posts (/post [topic] in Telegram) ----------------------------
+ON_DEMAND_LOOKBACK_HOURS = 72
+ON_DEMAND_MAX_SCORE = 5          # max unscored candidates to score per request
+TOPIC_SEARCH_DAYS = 7            # HN/GitHub live search window when the DB has no match
+TOPIC_SEARCH_HN_MIN_POINTS = 10
+TOPIC_SEARCH_RESULTS = 5         # per provider
+
 # --- Sources ---------------------------------------------------------------
 HTTP_TIMEOUT_SECONDS = 20
 USER_AGENT = "xbot-content-radar/0.1 (personal use)"
